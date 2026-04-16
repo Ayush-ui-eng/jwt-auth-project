@@ -8,10 +8,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const SECRET_KEY = "mysecretkey";
+// 🔐 Use ENV variables (IMPORTANT for Render)
+const SECRET_KEY = process.env.SECRET_KEY;
 
-// 🔥 NON-SRV CONNECTION (FIXED)
-mongoose.connect("mongodb://ayush:ayush123@ac-kcb4mqg-shard-00-00.5egu93l.mongodb.net:27017,ac-kcb4mqg-shard-00-01.5egu93l.mongodb.net:27017,ac-kcb4mqg-shard-00-02.5egu93l.mongodb.net:27017/?ssl=true&replicaSet=atlas-ugjf9f-shard-0&authSource=admin&appName=Cluster0")
+// 🔗 MongoDB Connection from ENV
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch(err => console.log("❌ MongoDB Error:", err));
 
@@ -37,7 +38,11 @@ app.post("/signup", async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUser = new User({ username, password: hashedPassword });
+        const newUser = new User({
+            username,
+            password: hashedPassword
+        });
+
         await newUser.save();
 
         res.json({ message: "User registered successfully" });
@@ -73,7 +78,7 @@ app.post("/login", async (req, res) => {
 });
 
 
-// 🔐 AUTH
+// 🔐 AUTH MIDDLEWARE
 function authenticateToken(req, res, next) {
     const authHeader = req.headers["authorization"];
     if (!authHeader) return res.sendStatus(403);
@@ -89,7 +94,7 @@ function authenticateToken(req, res, next) {
 }
 
 
-// 🔹 PROTECTED
+// 🔹 PROTECTED ROUTE
 app.get("/dashboard", authenticateToken, (req, res) => {
     res.json({
         message: "Welcome to dashboard",
@@ -98,6 +103,9 @@ app.get("/dashboard", authenticateToken, (req, res) => {
 });
 
 
-app.listen(3000, () => {
-    console.log("🚀 Server running on http://localhost:3000");
+// 🔥 IMPORTANT for Render (PORT FIX)
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
