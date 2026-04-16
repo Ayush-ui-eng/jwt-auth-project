@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Dashboard</h2>
+
+<p id="message"></p>
+
+<button onclick="logout()">Logout</button>
+
+<script>
+async function loadDashboard() {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const res = await fetch("http://localhost:3000/dashboard", {
+        method: "GET",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    if (res.status === 401 || res.status === 403) {
+        alert("Unauthorized");
+        window.location.href = "login.html";
+        return;
+    }
+
+    const data = await res.json();
+    document.getElementById("message").innerText = data.message + " " + data.user.username;
+}
+
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+}
+
+loadDashboard();
+</script>
+
+</body>
+</html>
