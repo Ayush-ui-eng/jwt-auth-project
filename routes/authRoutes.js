@@ -1,21 +1,15 @@
 const express = require("express");
 const router = express.Router();
 
-const { signup, login, logout, refresh } = require("../controllers/authController");
-const authenticateToken = require("../middleware/authMiddleware");
+const authController = require("../controllers/authController");
+
+// 🔥 DEBUG (IMPORTANT)
+console.log("DEBUG CONTROLLER:", authController);
 
 // Routes
-router.post("/signup", signup);
-router.post("/login", login);
-router.post("/logout", authenticateToken, logout);
-router.post("/refresh", refresh);
-
-// Protected route
-router.get("/dashboard", authenticateToken, (req, res) => {
-    res.json({
-        message: "Welcome to dashboard",
-        user: req.user
-    });
-});
+router.post("/signup", authController.signup);
+router.post("/login", authController.login);
+router.post("/logout", authController.logout);
+router.post("/refresh", authController.refresh);
 
 module.exports = router;
