@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const blacklist = require("../config/blacklist");
+const refreshTokens = require("../config/refreshTokens");
 
 const SECRET_KEY = process.env.SECRET_KEY;
 
@@ -35,7 +36,7 @@ exports.signup = async (req, res) => {
 };
 
 
-// 🔹 LOGIN
+// 🔹 LOGIN (ACCESS + REFRESH TOKEN)
 exports.login = async (req, res) => {
     console.log("👉 Login request:", req.body);
 
@@ -48,13 +49,27 @@ exports.login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(401).json({ message: "Wrong password" });
 
-        const token = jwt.sign(
+        // 🔹 Access Token (short life)
+        const accessToken = jwt.sign(
             { id: user._id, username: user.username },
             SECRET_KEY,
-            { expiresIn: "1h" }
+            { expiresIn: "15m" }
         );
 
-        res.json({ token });
+        // 🔹 Refresh Token (long life)
+        const refreshToken = jwt.sign(
+            { id: user._id, username: user.username },
+            SECRET_KEY,
+            { expiresIn: "7d" }
+        );
+
+        // Store refresh token
+        refreshTokens.add(refreshToken);
+
+        res.json({
+            accessToken,
+            refreshToken
+        });
 
     } catch (err) {
         res.status(500).json({ message: "Login error" });
@@ -62,7 +77,7 @@ exports.login = async (req, res) => {
 };
 
 
-// 🔹 LOGOUT (NEW)
+// 🔹 LOGOUT
 exports.logout = (req, res) => {
     const authHeader = req.headers["authorization"];
 
@@ -72,10 +87,40 @@ exports.logout = (req, res) => {
 
     if (!token) return res.sendStatus(400);
 
-    // 🚫 Add token to blacklist
+    // 🚫 Blacklist access token
     blacklist.add(token);
 
-    console.log("🚫 Token blacklisted:", token);
+    console.log("🚫 Access token blacklisted:", token);
 
     res.json({ message: "Logged out successfully" });
+};
+
+
+// 🔹 REFRESH TOKEN (NEW ACCESS TOKEN)
+exports.refresh = (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+    }
+
+    // Check if refresh token exists
+    if (!refreshTokens.has(refreshToken)) {
+        return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    jwt.verify(refreshToken, SECRET_KEY, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: "Refresh token expired" });
+        }
+
+        // 🔹 Generate new access token
+        const newAccessToken = jwt.sign(
+            { id: user.id, username: user.username },
+            SECRET_KEY,
+            { expiresIn: "15m" }
+        );
+
+        res.json({ accessToken: newAccessToken });
+    });
 };
