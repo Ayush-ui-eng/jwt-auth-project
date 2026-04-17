@@ -14,34 +14,68 @@
 <button onclick="logout()">Logout</button>
 
 <script>
+
+// 🔥 Helper: Fetch with auto refresh
+async function fetchWithAuth(url, options = {}) {
+    let accessToken = localStorage.getItem("accessToken");
+
+    options.headers = {
+        ...options.headers,
+        "Authorization": "Bearer " + accessToken
+    };
+
+    let res = await fetch(url, options);
+
+    // 🔥 If token expired
+    if (res.status === 401) {
+        console.log("⚠️ Access token expired. Refreshing...");
+
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        const refreshRes = await fetch("https://jwt-auth-project-pzf7.onrender.com/refresh", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ refreshToken })
+        });
+
+        const refreshData = await refreshRes.json();
+
+        console.log("👉 Refresh response:", refreshData);
+
+        if (refreshData.accessToken) {
+            // ✅ Save new access token
+            localStorage.setItem("accessToken", refreshData.accessToken);
+
+            console.log("✅ New access token saved");
+
+            // 🔁 Retry original request
+            options.headers["Authorization"] = "Bearer " + refreshData.accessToken;
+            return fetch(url, options);
+        } else {
+            console.log("❌ Refresh failed → logging out");
+            logout();
+        }
+    }
+
+    return res;
+}
+
+
+// 🔹 Load Dashboard
 async function loadDashboard() {
-    const token = localStorage.getItem("token");
     const status = document.getElementById("status");
 
     console.log("👉 Loading dashboard...");
-    console.log("👉 Token:", token);
-
-    if (!token) {
-        console.log("❌ No token found");
-        window.location.href = "login.html";
-        return;
-    }
 
     try {
-        const res = await fetch("https://jwt-auth-project-pzf7.onrender.com/dashboard", {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
+        const res = await fetchWithAuth("https://jwt-auth-project-pzf7.onrender.com/dashboard");
 
         console.log("👉 Response status:", res.status);
 
-        if (res.status === 401 || res.status === 403) {
-            console.log("❌ Unauthorized access");
+        if (!res.ok) {
             status.innerText = "Session expired. Please login again.";
-            localStorage.removeItem("token");
-            window.location.href = "login.html";
             return;
         }
 
@@ -58,13 +92,21 @@ async function loadDashboard() {
     }
 }
 
+
+// 🔹 Logout
 function logout() {
     console.log("👉 Logging out...");
-    localStorage.removeItem("token");
+
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+
     window.location.href = "login.html";
 }
 
+
+// 🔥 Run on load
 loadDashboard();
+
 </script>
 
 </body>

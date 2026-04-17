@@ -23,10 +23,9 @@ async function login() {
     const password = document.getElementById("password").value;
     const status = document.getElementById("status");
 
-    // 🔍 Frontend log
     console.log("👉 Login clicked:", { username, password });
 
-    // ⚠️ Validation
+    // Validation
     if (!username || !password) {
         status.innerText = "Please fill all fields";
         return;
@@ -47,13 +46,13 @@ async function login() {
 
         console.log("👉 Response data:", data);
 
-        if (data.token) {
-            // 🔐 Store token
-            localStorage.setItem("token", data.token);
+        // 🔥 UPDATED: handle access + refresh token
+        if (data.accessToken) {
+            localStorage.setItem("accessToken", data.accessToken);
+            localStorage.setItem("refreshToken", data.refreshToken);
 
-            console.log("✅ Token stored");
+            console.log("✅ Tokens stored");
 
-            // Redirect
             window.location.href = "dashboard.html";
         } else {
             status.innerText = data.message;
