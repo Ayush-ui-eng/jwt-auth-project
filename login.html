@@ -13,28 +13,55 @@
 
 <button onclick="login()">Login</button>
 
+<p id="status"></p>
+
 <p>New user? <a href="signup.html">Signup</a></p>
 
 <script>
 async function login() {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
+    const status = document.getElementById("status");
 
-    const res = await fetch("http://localhost:3000/login", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ username, password })
-    });
+    // 🔍 Frontend log
+    console.log("👉 Login clicked:", { username, password });
 
-    const data = await res.json();
+    // ⚠️ Validation
+    if (!username || !password) {
+        status.innerText = "Please fill all fields";
+        return;
+    }
 
-    if (data.token) {
-        localStorage.setItem("token", data.token);
-        window.location.href = "dashboard.html";
-    } else {
-        alert(data.message);
+    try {
+        const res = await fetch("https://jwt-auth-project-pzf7.onrender.com/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ username, password })
+        });
+
+        console.log("👉 Response status:", res.status);
+
+        const data = await res.json();
+
+        console.log("👉 Response data:", data);
+
+        if (data.token) {
+            // 🔐 Store token
+            localStorage.setItem("token", data.token);
+
+            console.log("✅ Token stored");
+
+            // Redirect
+            window.location.href = "dashboard.html";
+        } else {
+            status.innerText = data.message;
+        }
+
+    } catch (error) {
+        console.error("❌ Login error:", error);
+        status.innerText = "Something went wrong!";
     }
 }
 </script>
