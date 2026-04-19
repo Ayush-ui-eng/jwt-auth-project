@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Dashboard</h2>
+
+<p id="message">Loading...</p>
+<p id="status"></p>
+
+<button onclick="logout()">Logout</button>
+
+<script>
+
+// 🔐 Fetch with access token + refresh logic (LOCAL FIXED)
+async function fetchWithAuth(url, options = {}) {
+    let accessToken = localStorage.getItem("accessToken");
+
+    console.log("👉 Using access token:", accessToken);
+
+    if (!accessToken) {
+        document.getElementById("status").innerText = "No token found. Please login.";
+        return null;
+    }
+
+    options.headers = {
+        ...options.headers,
+        "Authorization": "Bearer " + accessToken
+    };
+
+    let res;
+
+    try {
+        res = await fetch(url, options);
+    } catch (err) {
+        console.log("❌ Fetch failed:", err);
+        document.getElementById("status").innerText = "Server not reachable";
+        return null;
+    }
+
+    // 🔁 If expired → try refresh
+    if (res.status === 401 || res.status === 403) {
+        console.log("⚠️ Token expired, trying refresh...");
+
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        if (!refreshToken) {
+            document.getElementById("status").innerText = "Session expired. Please login again.";
+            return null;
+        }
+
+        try {
+            const refreshRes = await fetch("http://localhost:3000/refresh", {  // ✅ FIXED
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            const refreshData = await refreshRes.json();
+
+            console.log("👉 Refresh response:", refreshData);
+
+            if (refreshData.accessToken) {
+                localStorage.setItem("accessToken", refreshData.accessToken);
+
+                console.log("✅ New access token saved");
+
+                // 🔁 Retry original request
+                options.headers["Authorization"] = "Bearer " + refreshData.accessToken;
+                return fetch(url, options);
+            } else {
+                document.getElementById("status").innerText = "Refresh failed. Please login again.";
+                return null;
+            }
+
+        } catch (err) {
+            console.log("❌ Refresh error:", err);
+            document.getElementById("status").innerText = "Session error. Please login again.";
+            return null;
+        }
+    }
+
+    return res;
+}
+
+
+// 📊 Load Dashboard
+async function loadDashboard() {
+    const status = document.getElementById("status");
+
+    console.log("👉 Loading dashboard...");
+
+    try {
+        const res = await fetchWithAuth("http://localhost:3000/dashboard"); // ✅ FIXED
+
+        if (!res) return;
+
+        if (!res.ok) {
+            const text = await res.text();
+            console.log("❌ Dashboard error:", text);
+
+            status.innerText = "Unauthorized or server error";
+            return;
+        }
+
+        const data = await res.json();
+
+        document.getElementById("message").innerText =
+            data.message + " " + data.user.username;
+
+        status.innerText = "✅ Loaded successfully";
+
+    } catch (error) {
+        console.error("❌ Dashboard crash:", error);
+        status.innerText = "Error loading dashboard";
+    }
+}
+
+
+// 🚪 Logout
+async function logout() {
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    try {
+        await fetch("http://localhost:3000/logout", { // ✅ FIXED
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + accessToken
+            },
+            body: JSON.stringify({ refreshToken })
+        });
+    } catch (err) {
+        console.log("⚠️ Logout API failed (still clearing local data)");
+    }
+
+    localStorage.clear();
+    window.location.href = "index.html";
+}
+
+
+// 🚀 Run on load
+loadDashboard();
+
+</script>
+
+</body>
+</html>

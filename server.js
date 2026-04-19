@@ -1,11 +1,17 @@
+// 🔥 MUST BE FIRST (loads .env properly)
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 
-require("dotenv").config();
-
 const app = express();
 
+// 🔥 DEBUG (check if env is loaded)
+console.log("👉 SECRET_KEY:", process.env.SECRET_KEY);
+console.log("👉 MONGO_URI loaded:", process.env.MONGO_URI ? "YES" : "NO");
+
+// 🔧 Middleware
 app.use(express.json());
 app.use(cors());
 
@@ -17,6 +23,11 @@ app.use("/", authRoutes);
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch(err => console.log("❌ MongoDB Error:", err));
+
+// 🧪 Test route (optional but useful)
+app.get("/", (req, res) => {
+    res.send("API is working 🚀");
+});
 
 // 🔥 Server
 const PORT = process.env.PORT || 3000;

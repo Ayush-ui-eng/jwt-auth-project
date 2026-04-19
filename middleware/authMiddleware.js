@@ -1,40 +1,27 @@
 const jwt = require("jsonwebtoken");
-const blacklist = require("../config/blacklist");
-
+const blacklist = require("../config/blacklist"); // 👈 ADD THIS
 const SECRET_KEY = process.env.SECRET_KEY;
 
-function authenticateToken(req, res, next) {
+module.exports = (req, res, next) => {
     const authHeader = req.headers["authorization"];
 
     if (!authHeader) {
-        console.log("❌ No token provided");
-        return res.sendStatus(403);
+        return res.status(401).json({ message: "No token provided" });
     }
 
     const token = authHeader.split(" ")[1];
 
-    if (!token) {
-        console.log("❌ Token missing");
-        return res.sendStatus(403);
-    }
-
-    // 🔥 NEW: Check blacklist
+    // 🚫 CHECK BLACKLIST
     if (blacklist.has(token)) {
-        console.log("🚫 Blacklisted token used");
-        return res.status(401).json({ message: "Token expired (logged out)" });
+        return res.status(403).json({ message: "Token is logged out" });
     }
 
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    jwt.verify(token, SECRET_KEY, (err, user) => {
         if (err) {
-            console.log("❌ Invalid token");
-            return res.sendStatus(401);
+            return res.status(403).json({ message: "Invalid token" });
         }
 
-        console.log("✅ Token verified:", decoded);
-
-        req.user = decoded;
+        req.user = user;
         next();
     });
-}
-
-module.exports = authenticateToken;
+};

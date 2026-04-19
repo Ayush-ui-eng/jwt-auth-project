@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Signup</h2>
+
+<form id="signupForm">
+    <input type="text" id="username" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+
+    <button type="submit">Signup</button>
+</form>
+
+<p id="status"></p>
+
+<p>Already have account? <a href="index.html">Login</a></p>
+
+<script>
+document.getElementById("signupForm").addEventListener("submit", signup);
+
+async function signup(e) {
+    e.preventDefault();
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const status = document.getElementById("status");
+
+    status.innerText = "Creating account...";
+
+    try {
+        const res = await fetch("https://jwt-auth-project-pzf7.onrender.com/signup", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ username, password })
+        });
+
+        let data;
+        try {
+            data = await res.json();
+        } catch {
+            throw new Error("Invalid JSON response");
+        }
+
+        status.innerText = data.message || "Signup complete";
+
+    } catch (error) {
+        console.error(error);
+        status.innerText = "Server error";
+    }
+}
+</script>
+
+</body>
+</html>
